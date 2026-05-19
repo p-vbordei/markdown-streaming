@@ -6,7 +6,7 @@
 [![downloads](https://img.shields.io/npm/dm/markdown-streaming.svg)](https://www.npmjs.com/package/markdown-streaming)
 [![bundle](https://img.shields.io/bundlejs/size/markdown-streaming)](https://bundlejs.com/?q=markdown-streaming)
 
-Render Markdown to HTML **incrementally** as tokens arrive from an LLM. Designed for chat UIs: at every chunk boundary, you get valid HTML you can drop straight into the DOM — partial inline pairs (`**unfini`) are auto-closed, half-written code fences render visibly.
+> Render Markdown to HTML incrementally as tokens arrive from an LLM. Designed for chat UIs: at every chunk boundary, you get valid HTML you can drop straight into the DOM — partial inline pairs (`**unfini`) are auto-closed, half-written code fences render visibly.
 
 ```ts
 import { MarkdownStreamer, render } from "markdown-streaming";
@@ -26,6 +26,91 @@ render("# Hello\n\nThe world is **strange**.");
 
 ```sh
 npm install markdown-streaming
+```
+
+Works with Node 20+, browsers, Bun, Deno. ESM + CJS.
+
+## Why
+
+Standard Markdown renderers (`marked`, `markdown-it`) assume the input is **complete**. When you're streaming tokens from an LLM, that's never true mid-response — the buffer at any moment has unclosed `**bold` markers, half-written code fences, partial inline code.
+
+Naive solutions:
+
+- Re-render the entire buffer on every token: works but produces flicker (unclosed `**` shows as literal asterisks until the close arrives).
+- Only render when complete: defeats the point of streaming.
+
+`markdown-streaming` closes partial inline pairs at the buffer boundary so the rendered HTML is always **structurally valid**. The result: smooth incremental rendering with no flicker.
+
+## Recipes
+
+### React chat UI
+
+```tsx
+import { useEffect, useRef, useState } from "react";
+import { MarkdownStreamer } from "markdown-streaming";
+import { streamText } from "@p-vbordei/llm-stream-parser";
+
+function ChatMessage({ prompt }: { prompt: string }) {
+  const [html, setHtml] = useState("");
+  const ref = useRef(new MarkdownStreamer());
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await fetch("/api/llm", { method: "POST", body: prompt });
+      for await (const chunk of streamText(res.body!)) {
+        if (cancelled) return;
+        setHtml(ref.current.feed(chunk));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [prompt]);
+
+  return <div dangerouslySetInnerHTML={{ __html: html }} />;
+}
+```
+
+### Vanilla DOM
+
+```ts
+import { MarkdownStreamer } from "markdown-streaming";
+
+const s = new MarkdownStreamer();
+const el = document.querySelector("#chat")!;
+
+ws.onmessage = (e) => {
+  el.innerHTML = s.feed(e.data);
+};
+```
+
+### One-shot for full documents
+
+```ts
+import { render } from "markdown-streaming";
+
+const html = render(await fs.readFile("README.md", "utf8"));
+res.send(`<!doctype html><body>${html}</body>`);
+```
+
+### Disable partial-closing for finished documents
+
+```ts
+import { render } from "markdown-streaming";
+
+// When you know input is complete
+render(content, { closeUnfinished: false });
+```
+
+### Combine with llm-stream-parser
+
+```ts
+import { streamText } from "@p-vbordei/llm-stream-parser";
+import { MarkdownStreamer } from "markdown-streaming";
+
+const md = new MarkdownStreamer();
+for await (const chunk of streamText(res.body!)) {
+  outputEl.innerHTML = md.feed(chunk);
+}
 ```
 
 ## What it renders
@@ -55,7 +140,7 @@ At every call to `feed()`, the returned HTML is **structurally valid**:
 - Inside a `` ``` `` fence with no terminator yet → renders as `<pre><code>...</code></pre>` showing the in-progress code
 - Lists / paragraphs are closed cleanly at block boundaries
 
-Set `closeUnfinished: false` if you'd rather leave partial pairs unrendered (e.g. for batch rendering of complete documents).
+Set `closeUnfinished: false` if you'd rather leave partial pairs unrendered.
 
 ## API
 
