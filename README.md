@@ -2,6 +2,10 @@
 
 [![ci](https://github.com/p-vbordei/markdown-streaming/actions/workflows/ci.yml/badge.svg)](https://github.com/p-vbordei/markdown-streaming/actions/workflows/ci.yml)
 
+[![npm](https://img.shields.io/npm/v/markdown-streaming.svg)](https://www.npmjs.com/package/markdown-streaming)
+[![downloads](https://img.shields.io/npm/dm/markdown-streaming.svg)](https://www.npmjs.com/package/markdown-streaming)
+[![bundle](https://img.shields.io/bundlejs/size/markdown-streaming)](https://bundlejs.com/?q=markdown-streaming)
+
 Render Markdown to HTML **incrementally** as tokens arrive from an LLM. Designed for chat UIs: at every chunk boundary, you get valid HTML you can drop straight into the DOM — partial inline pairs (`**unfini`) are auto-closed, half-written code fences render visibly.
 
 ```ts
