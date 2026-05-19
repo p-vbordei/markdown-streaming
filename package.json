@@ -1,6 +1,6 @@
 {
   "name": "markdown-streaming",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Render Markdown to HTML incrementally as tokens arrive from an LLM. Closes unfinished inline pairs so HTML is valid at every chunk boundary. Zero dependencies.",
   "keywords": [
     "markdown",
